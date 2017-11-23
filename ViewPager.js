@@ -114,7 +114,6 @@ var ViewPager = React.createClass({
       onPanResponderMove: (e, gestureState) => {
         var dx = gestureState.dx;
         var offsetX = -dx / this.state.viewWidth + this.childIndex + ((!this.afterFirstMove && this.props.isLoop) ? 1 : 0);
-        console.warn("X:", offsetX);
         this.state.scrollValue.setValue(offsetX);
       },
     });
