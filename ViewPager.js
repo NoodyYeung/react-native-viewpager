@@ -1,7 +1,7 @@
 'use strict';
 
 var React = require('react');
-var { PropTypes } = React;
+var PropTypes = require('prop-types');
 
 var ReactNative = require('react-native');
 var {
@@ -62,12 +62,11 @@ var ViewPager = React.createClass({
   },
 
   getInitialState() {
-    let scrollValue =  new Animated.Value(0);
     return {
       currentPage: 0,
       viewWidth: 0,
-      scrollValue: scrollValue,
-      scrollValueMinusOne : Animated.add(scrollValue, new Animated.Value(-1))
+      scrollValue: new Animated.Value(0),
+      valueZero : new Animated.Value(0)
     };
   },
 
@@ -88,6 +87,9 @@ var ViewPager = React.createClass({
 
       this.props.hasTouch && this.props.hasTouch(false);
 
+      // if(!this.afterFirstMove && this.props.isLoop){
+      //   gestureState.dx += ((!this.afterFirstMove && this.props.isLoop) ? 1 : 0)
+      // }
       this.movePage(step, gestureState);
     }
 
@@ -111,22 +113,15 @@ var ViewPager = React.createClass({
       // Dragging, move the view with the touch
       onPanResponderMove: (e, gestureState) => {
         var dx = gestureState.dx;
-        var offsetX;
-        if(this.afterFirstMove || !this.props.isLoop){
-          offsetX = -dx / this.state.viewWidth + this.childIndex;
-        }else{
-          offsetX =( -dx + this.state.viewWidth) / this.state.viewWidth + this.childIndex;
-
-        }
+        var offsetX = -dx / this.state.viewWidth + this.childIndex + ((!this.afterFirstMove && this.props.isLoop) ? 1 : 0);
+        console.warn("X:", offsetX);
         this.state.scrollValue.setValue(offsetX);
       },
     });
-    if (this.props.isLoop && !this.props.dataSource.pageIdentities.length == 1) {
+
+    if (this.props.isLoop) {
       this.childIndex = 1;
       this.state.scrollValue.setValue(1);
-      this.setState({
-        currentPage : 1
-      })
     }
     if(this.props.initialPage){
       var initialPage = Number(this.props.initialPage);
@@ -179,6 +174,7 @@ var ViewPager = React.createClass({
   },
 
   goToPage(pageNumber, animate = true) {
+
     var pageCount = this.props.dataSource.getPageCount();
     if (pageNumber < 0 || pageNumber >= pageCount) {
       console.error('Invalid page number: ', pageNumber);
@@ -191,13 +187,12 @@ var ViewPager = React.createClass({
 
   movePage(step, gs, animate = true) {
     var pageCount = this.props.dataSource.getPageCount();
-    var pageNumber = this.state.currentPage + ((pageCount > 1)? parseInt(step) : 0);
+    var pageNumber = this.state.currentPage + step;
     if (this.props.isLoop) {
-      pageNumber = pageCount == 0 ? 0 : ((pageNumber + pageCount) % pageCount);
+      pageNumber = pageCount == 0 ? pageNumber = 0 : ((pageNumber + pageCount) % pageCount);
     } else {
       pageNumber = Math.min(Math.max(0, pageNumber), pageCount - 1);
     }
-
 
     const moved = pageNumber !== this.state.currentPage;
     const scrollStep = (moved ? step : 0) + this.childIndex;
@@ -205,21 +200,17 @@ var ViewPager = React.createClass({
 
     const postChange = () => {
       this.fling = false;
-      if(pageCount <= 1){ 
-        return
-      };
-      this.afterFirstMove = true;
       this.childIndex = nextChildIdx;
       this.state.scrollValue.setValue(nextChildIdx);
+      this.afterFirstMove = true;
       this.setState({
         currentPage: pageNumber,
-      },()=>{
       });
     };
 
     if (animate) {
       this.fling = true;
-      this.props.animation(this.state.scrollValue, Math.max(scrollStep ,0 ), gs)
+      this.props.animation(this.state.scrollValue, scrollStep + ((!this.afterFirstMove && this.props.isLoop) ? 1 : 0), gs)
         .start((event) => {
           if (event.finished) {
             postChange();
@@ -250,15 +241,12 @@ var ViewPager = React.createClass({
     }
   },
 
-  _getPage(pageIdx: number, loop:boolean = false ) {
-    if(this.key == undefined){
-      this.key = 0;
-    }
+  _getPage(pageIdx: number, loop:boolean) {
     var dataSource = this.props.dataSource;
     var pageID = dataSource.pageIdentities[pageIdx];
     return (
       <StaticRenderer
-        key={'p_' + pageID + (loop ? '_1' : '')}
+        key={'p_' + pageID }
         shouldUpdate={true}
         render={this.props.renderPage.bind(
           null,
@@ -287,9 +275,9 @@ var ViewPager = React.createClass({
         pagesNum++;
         hasLeft = true;
       } else if (this.state.currentPage == 0 && this.props.isLoop) {
-          bodyComponents.push(this._getPage( pageIDs.length - 1));
-          pagesNum++;
-          hasLeft = true;
+        bodyComponents.push(this._getPage(pageIDs.length - 1, true));
+        pagesNum++;
+        hasLeft = true;
       }
 
       // center page
@@ -301,7 +289,7 @@ var ViewPager = React.createClass({
         bodyComponents.push(this._getPage(this.state.currentPage + 1));
         pagesNum++;
       } else if (this.state.currentPage == pageIDs.length - 1 && this.props.isLoop) {
-        bodyComponents.push(this._getPage(0));
+        bodyComponents.push(this._getPage(0, true));
         pagesNum++;
       }
     }
@@ -317,9 +305,8 @@ var ViewPager = React.createClass({
     var translateX = this.state.scrollValue.interpolate({
       inputRange: [0, 1], outputRange: [0, -viewWidth]
     });
-    var scrollValue = this.afterFirstMove || !this.props.isLoop || pageIDs.length == 1 ? this.state.scrollValue : this.state.scrollValueMinusOne;
-    if(pageIDs.length == 1) {this.state.scrollValue.setValue(0)}
-   return (
+
+    return (
       <View style={{flex: 1}}
         onLayout={(event) => {
             // console.log('ViewPager.onLayout()');
@@ -328,14 +315,14 @@ var ViewPager = React.createClass({
               return;
             }
             this.setState({
-              currentPage: this.state.currentPage ,
-              viewWidth: viewWidth
+              currentPage: this.state.currentPage,
+              viewWidth: viewWidth,
             });
           }}
         >
 
         <Animated.View style={[sceneContainerStyle, {transform: [{
-          translateX : (this.afterFirstMove || this.props.isLoop) ?  translateX : viewWidth
+          translateX :  translateX 
         }]}]}
           {...this._panResponder.panHandlers}>
           {bodyComponents}
@@ -344,7 +331,7 @@ var ViewPager = React.createClass({
         {this.renderPageIndicator({goToPage: this.goToPage,
                             pageCount: pageIDs.length,
                             activePage: this.state.currentPage,
-                            scrollValue: scrollValue,
+                            scrollValue: this.afterFirstMove ? this.state.scrollValue : this.state.valueZero,
                             scrollOffset: this.childIndex,
                           })}
       </View>
