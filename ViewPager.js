@@ -65,7 +65,7 @@ var ViewPager = React.createClass({
     return {
       currentPage: 0,
       viewWidth: 0,
-      scrollValue: new Animated.Value(0),
+      scrollValue: new Animated.Value(1),
       valueZero : new Animated.Value(0)
     };
   },
@@ -134,9 +134,16 @@ var ViewPager = React.createClass({
     if (this.props.autoPlay) {
       this._startAutoPlay();
     }
+
+    if(this.props.isLoop){
+      this.state.scrollValue.setValue(1);
+    }
+      this.state.scrollValue.setValue(1);
+
   },
 
   componentWillReceiveProps(nextProps) {
+
     if (nextProps.autoPlay) {
       this._startAutoPlay();
     } else {
@@ -155,6 +162,8 @@ var ViewPager = React.createClass({
 
       if (!nextProps.isLoop) {
         this.state.scrollValue.setValue(constrainedPage > 0 ? 1 : 0);
+      }else{
+        this.state.scrollValue.setValue(1);
       }
 
       this.childIndex = Math.min(this.childIndex, constrainedPage);
@@ -173,7 +182,6 @@ var ViewPager = React.createClass({
   },
 
   goToPage(pageNumber, animate = true) {
-
     var pageCount = this.props.dataSource.getPageCount();
     if (pageNumber < 0 || pageNumber >= pageCount) {
       console.error('Invalid page number: ', pageNumber);
@@ -185,6 +193,7 @@ var ViewPager = React.createClass({
   },
 
   movePage(step, gs, animate = true) {
+
     var pageCount = this.props.dataSource.getPageCount();
     var pageNumber = this.state.currentPage + step;
     if (this.props.isLoop) {
@@ -301,14 +310,18 @@ var ViewPager = React.createClass({
 
     // this.childIndex = hasLeft ? 1 : 0;
     // this.state.scrollValue.setValue(this.childIndex);
-    var translateX = this.state.scrollValue.interpolate({
+    var translateX;
+    translateX = this.state.scrollValue.interpolate({
       inputRange: [0, 1], outputRange: [0, -viewWidth]
     });
 
     return (
       <View style={{flex: 1}}
         onLayout={(event) => {
-            // console.log('ViewPager.onLayout()');
+            if(this.props.isLoop && pageIDs.length > 1){
+              this.state.scrollValue.setValue(1);
+            }
+
             var viewWidth = event.nativeEvent.layout.width;
             if (!viewWidth || this.state.viewWidth === viewWidth) {
               return;
