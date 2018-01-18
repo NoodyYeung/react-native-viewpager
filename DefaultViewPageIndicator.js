@@ -2,6 +2,9 @@
 
 var React = require('react');
 var ReactNative = require('react-native');
+import PropTypes from 'prop-types';
+var createReactClass = require('create-react-class');
+
 var {
   Dimensions,
   StyleSheet,
@@ -45,11 +48,11 @@ var styles = StyleSheet.create({
   },
 });
 
-var DefaultViewPageIndicator = React.createClass({
+var DefaultViewPageIndicator = createReactClass({
   propTypes: {
-    goToPage: React.PropTypes.func,
-    activePage: React.PropTypes.number,
-    pageCount: React.PropTypes.number
+    goToPage: PropTypes.func,
+    activePage: PropTypes.number,
+    pageCount: PropTypes.number
   },
 
   getInitialState() {
